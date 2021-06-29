@@ -1,0 +1,21 @@
+kafkaProperties:
+  bootstrap.servers: 163.172.173.63:9092
+  acks: all
+  retries: 0
+  batch.size: 16384
+  linger.ms: 1
+  buffer.memory: 33554432
+  key.serializer: org.apache.kafka.common.serialization.StringSerializer
+  value.serializer: org.apache.kafka.common.serialization.StringSerializer
+fileReaderConfigurations:
+  - folder: /apps/datafeeds/avaya/backup/
+    filePattern:
+    checkFileDuplicates: true
+    dataKey: avaya
+    header: date time duration customerNo agentId F1 vdn name team calledNo
+    headerLine:
+    headerDelimiter: \s+
+    recordDelimiter: \s+
+    recordSkipPattern: (?s).*\bData Received\b.*
+    kafkaTopic: avaya
+    threadSleepTimeMs: 3000
