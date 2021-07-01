@@ -19,6 +19,8 @@ nb-configuration.xml
 # ignore .idea folder
 .idea/
 
+configs/
+
 *.iml
 
 # Also ignore engine.iml

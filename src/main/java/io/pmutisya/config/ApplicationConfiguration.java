@@ -22,4 +22,12 @@ public class ApplicationConfiguration {
     public void setFileReaderConfigurations(List<CDRFileReaderConfiguration> fileReaderConfigurations) {
         this.fileReaderConfigurations = fileReaderConfigurations;
     }
+
+    @Override
+    public String toString() {
+        return "ApplicationConfiguration{" +
+                "kafkaProperties=" + kafkaProperties +
+                ", fileReaderConfigurations=" + fileReaderConfigurations +
+                '}';
+    }
 }
