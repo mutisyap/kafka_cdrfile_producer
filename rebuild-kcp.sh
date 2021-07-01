@@ -1,13 +1,9 @@
-#!/bin/sh 
-
-cd ..
+#!/bin/sh
 
 echo "Started packaging"
 
 mvn clean package
 
-echo "Done packaging" 
-
-cd scripts
+echo "Done packaging"
 
 exit 0;
