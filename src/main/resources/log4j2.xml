@@ -4,7 +4,7 @@
         <Console name="ConsoleAppender" target="SYSTEM_OUT">
             <PatternLayout pattern="%p|%d{yyy-MM-dd HH:mm:ss.SSS}|%t|%C{1}|%M|%F|%L|%msg%n"/>
         </Console>
-        <File name="FileAppender" fileName="/logs/kcp/root.log" immediateFlush="false" append="true">
+        <File name="FileAppender" fileName="/logs/kcp/root.log" immediateFlush="true" append="true">
             <PatternLayout pattern="%d{yyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
         </File>
     </Appenders>
