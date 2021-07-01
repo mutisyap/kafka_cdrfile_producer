@@ -15,7 +15,7 @@ import java.util.Optional;
 
 public class ConfigurationUtil {
     private static final String filename = "application.yml";
-    private static final String configDir = "/apps/kafkacdrproducer/configs";
+    private static final String configDir = "/apps/kcp/configs";
 
     private static final Logger logger = LogManager.getLogger(ConfigurationUtil.class);
 
