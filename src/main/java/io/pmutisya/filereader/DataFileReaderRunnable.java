@@ -122,7 +122,7 @@ public class DataFileReaderRunnable implements Runnable {
         }
     }
 
-    private File getFileUsingCommons(String folder) {
+    private File getFileUsingCommons(String folder) throws IOException {
         File directory = new File(folder);
 
         IOFileFilter fileFilter = FileFilterUtils.fileFileFilter();
@@ -131,11 +131,20 @@ public class DataFileReaderRunnable implements Runnable {
         }
 
         List<File> files = (List<File>) FileUtils.listFiles(directory, fileFilter, null);
-        files.sort(LastModifiedFileComparator.LASTMODIFIED_COMPARATOR);
-        if (files.isEmpty()) {
-            return null;
+        files.sort(LastModifiedFileComparator.LASTMODIFIED_REVERSE);
+
+        for (File file : files) {
+            if (isDuplicate(file)) {
+                logger.info("Found duplicate file : {}. Filename : {}", file, file.getName());
+
+                String duplicateFolder = folder + "/duplicate";
+
+                FileReaderUtil.moveFile(file.getName(), folder, duplicateFolder, StandardCopyOption.REPLACE_EXISTING);
+                continue;
+            }
+            return file;
         }
-        return files.get(0);
+        return null;
     }
 
     private File getFile(String folder) throws IOException {
