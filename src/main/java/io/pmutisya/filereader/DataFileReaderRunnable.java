@@ -5,6 +5,11 @@ import io.pmutisya.domain.CDRFile;
 import io.pmutisya.kafkaproducer.KafkaProducer;
 import io.pmutisya.repository.CDRFileRepository;
 import io.pmutisya.util.FileReaderUtil;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.comparator.LastModifiedFileComparator;
+import org.apache.commons.io.filefilter.FileFilterUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -83,7 +88,7 @@ public class DataFileReaderRunnable implements Runnable {
     public void run() {
         while (true) {
             try {
-                File file = getFile(folder);
+                File file = getFileUsingCommons(folder);
 
                 if (file != null) {
                     logger.info("Retrieved file : {}", file);
@@ -115,6 +120,22 @@ public class DataFileReaderRunnable implements Runnable {
                 }
             }
         }
+    }
+
+    private File getFileUsingCommons(String folder) {
+        File directory = new File(folder);
+
+        IOFileFilter fileFilter = FileFilterUtils.fileFileFilter();
+        if (filePattern != null && !filePattern.isEmpty()) {
+            fileFilter = new RegexFileFilter(filePattern);
+        }
+
+        List<File> files = (List<File>) FileUtils.listFiles(directory, fileFilter, null);
+        files.sort(LastModifiedFileComparator.LASTMODIFIED_COMPARATOR);
+        if (files.isEmpty()) {
+            return null;
+        }
+        return files.get(0);
     }
 
     private File getFile(String folder) throws IOException {

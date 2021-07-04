@@ -23,7 +23,7 @@ public class CDRFileRepository {
     }
 
     public boolean findDuplicateByDataFeedAndFilename(String dataFeed, String filename) {
-        logger.info("Finding duplicate file given dataFeed : {} : and filename: {}", dataFeed, filename);
+        logger.debug("Finding duplicate file given dataFeed : {} : and filename: {}", dataFeed, filename);
 
         Session session = HibernateConfiguration.getSessionFactory().openSession();
         session.beginTransaction();
