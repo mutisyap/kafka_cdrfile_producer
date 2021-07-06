@@ -31,7 +31,7 @@ public class KafkaCDRFileFactory {
     public void initializeReaderThreads() {
         for (CDRFileReaderConfiguration cdrFileReaderConfiguration : applicationConfiguration.getFileReaderConfigurations()) {
             // create thread with that configuration
-            DataFileReaderRunnable dataFileReaderRunnable = new DataFileReaderRunnable(cdrFileReaderConfiguration, cdrFileRepository, kafkaProducer);
+            DataFileReaderRunnable dataFileReaderRunnable = new DataFileReaderRunnable(cdrFileReaderConfiguration, kafkaProducer);
 
             Thread thread = new Thread(dataFileReaderRunnable, "reader-thread-" + dataFileReaderRunnable.getDataKey());
             readerThreads.add(thread);

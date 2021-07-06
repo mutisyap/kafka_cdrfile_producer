@@ -1,6 +1,8 @@
 package io.pmutisya.filereader;
 
+import com.hazelcast.core.HazelcastInstance;
 import io.pmutisya.config.CDRFileReaderConfiguration;
+import io.pmutisya.config.HazelcastConfiguration;
 import io.pmutisya.domain.CDRFile;
 import io.pmutisya.kafkaproducer.KafkaProducer;
 import io.pmutisya.repository.CDRFileRepository;
@@ -23,6 +25,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
@@ -30,7 +33,9 @@ import java.util.stream.Stream;
 
 public class DataFileReaderRunnable implements Runnable {
     private static final Logger logger = LogManager.getLogger(DataFileReaderRunnable.class);
-    private final CDRFileRepository cdrFileRepository;
+    private static final int hazelCastTimeToLiveInHours = 48;
+    private static final String hazelCastMapName = DataFileReaderRunnable.class.getName();
+    private static final HazelcastInstance hazelcastInstance = HazelcastConfiguration.getHazelcastInstance();
 
     private final KafkaProducer kafkaProducer;
     private final long startTime = 0;
@@ -46,8 +51,7 @@ public class DataFileReaderRunnable implements Runnable {
     private String[] headers;
     private int threadSleepTimeMs;
 
-    public DataFileReaderRunnable(CDRFileReaderConfiguration cdrFileReaderConfiguration, CDRFileRepository cdrFileRepository, KafkaProducer kafkaProducer) {
-        this.cdrFileRepository = cdrFileRepository;
+    public DataFileReaderRunnable(CDRFileReaderConfiguration cdrFileReaderConfiguration, KafkaProducer kafkaProducer) {
         this.kafkaProducer = kafkaProducer;
         readConfigurations(cdrFileReaderConfiguration);
 
@@ -100,9 +104,10 @@ public class DataFileReaderRunnable implements Runnable {
 
                     int records = readFile(cdrFile);
 
-                    // save cdr file => future
-                    cdrFileRepository.save(cdrFile);
-
+                    // save cdr file to cache for 48 hours
+                    // cdrFileRepository.save(cdrFile);
+                    String mapKey = cdrFile.getDataFeed() + "_" + cdrFile.getFilename();
+                    hazelcastInstance.getMap(hazelCastMapName).set(mapKey, cdrFile, hazelCastTimeToLiveInHours, TimeUnit.HOURS);
                 } else {
                     logger.info("No files to read in folder : {}", folder);
                 }
@@ -189,7 +194,13 @@ public class DataFileReaderRunnable implements Runnable {
 
     private boolean isDuplicate(File file) {
         if (checkFileDuplicates) {
-            return cdrFileRepository.findDuplicateByDataFeedAndFilename(dataKey, file.getName());
+            String mapKey = dataKey + "_" + file.getName();
+            Object cdrFile = hazelcastInstance.getMap(hazelCastMapName).get(mapKey);
+
+            if (cdrFile != null) {
+                logger.warn("Found duplicate file : {}", cdrFile);
+                return true;
+            }
         }
         return false;
     }
