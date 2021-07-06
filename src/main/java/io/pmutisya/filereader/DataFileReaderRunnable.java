@@ -104,12 +104,16 @@ public class DataFileReaderRunnable implements Runnable {
 
                     int records = readFile(cdrFile);
 
+                    logger.debug("Read records : {}", records);
+
                     // save cdr file to cache for 48 hours
                     // cdrFileRepository.save(cdrFile);
                     String mapKey = cdrFile.getDataFeed() + "_" + cdrFile.getFilename();
                     hazelcastInstance.getMap(hazelCastMapName).set(mapKey, cdrFile, hazelCastTimeToLiveInHours, TimeUnit.HOURS);
+                    logger.debug("Cached file to hazelcast with key : {}", mapKey);
 
                     kafkaProducer.produceToKafka(cdrFile, "cdr-files", dataKey);
+                    logger.debug("Produced record to Kafka with key : {}", dataKey);
                 } else {
                     logger.debug("No files to read in folder : {}", folder);
                 }
