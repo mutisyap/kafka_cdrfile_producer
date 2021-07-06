@@ -2,6 +2,7 @@ package io.pmutisya;
 
 import io.pmutisya.config.ApplicationConfiguration;
 import io.pmutisya.config.ConfigurationUtil;
+import io.pmutisya.config.HazelcastConfiguration;
 import io.pmutisya.factory.KafkaCDRFileFactory;
 import io.pmutisya.repository.CDRFileRepository;
 import org.apache.logging.log4j.LogManager;
@@ -65,6 +66,7 @@ App {
             logger.info("Shutdown successful. Bye");
             Thread.currentThread().interrupt();
             mainThread.interrupt();
+            HazelcastConfiguration.getHazelcastInstance().shutdown();
         } catch (Exception ex) {
             logger.error("Error shutting down", ex);
         }
