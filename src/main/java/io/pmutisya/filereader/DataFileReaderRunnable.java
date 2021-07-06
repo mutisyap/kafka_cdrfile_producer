@@ -108,6 +108,8 @@ public class DataFileReaderRunnable implements Runnable {
                     // cdrFileRepository.save(cdrFile);
                     String mapKey = cdrFile.getDataFeed() + "_" + cdrFile.getFilename();
                     hazelcastInstance.getMap(hazelCastMapName).set(mapKey, cdrFile, hazelCastTimeToLiveInHours, TimeUnit.HOURS);
+
+                    kafkaProducer.produceToKafka(cdrFile, "cdr-files", dataKey);
                 } else {
                     logger.info("No files to read in folder : {}", folder);
                 }
