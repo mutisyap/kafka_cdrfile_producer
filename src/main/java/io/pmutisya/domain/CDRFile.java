@@ -1,11 +1,12 @@
 package io.pmutisya.domain;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "tbl_cdr_files")
-public class CDRFile {
+public class CDRFile implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(unique = true, name = "id", nullable = false)
