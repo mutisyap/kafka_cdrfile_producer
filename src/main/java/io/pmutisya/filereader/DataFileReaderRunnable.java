@@ -111,7 +111,7 @@ public class DataFileReaderRunnable implements Runnable {
 
                     kafkaProducer.produceToKafka(cdrFile, "cdr-files", dataKey);
                 } else {
-                    logger.info("No files to read in folder : {}", folder);
+                    logger.debug("No files to read in folder : {}", folder);
                 }
 
                 Thread.sleep(threadSleepTimeMs);
