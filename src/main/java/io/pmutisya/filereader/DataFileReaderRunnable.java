@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -51,6 +52,7 @@ public class DataFileReaderRunnable implements Runnable {
     private String recordSkipPattern;
     private String[] headers;
     private int eventsPerSecond;
+    private final  ReentrantLock streamLock = new ReentrantLock();
 
     public DataFileReaderRunnable(CDRFileReaderConfiguration cdrFileReaderConfiguration, KafkaProducer kafkaProducer) {
         this.kafkaProducer = kafkaProducer;
@@ -251,29 +253,31 @@ public class DataFileReaderRunnable implements Runnable {
                             return;
                         }
 
+                            Map<String, String> recordMap = recordToMap(record, inFileHeader.get(), headers);
+                            logger.debug("Converted record : {} to map : {} using headers : {} and inFileHeader : {}", record, recordMap, headers, inFileHeader);
 
-                        Map<String, String> recordMap = recordToMap(record, inFileHeader.get(), headers);
-                        logger.debug("Converted record : {} to map : {} using headers : {} and inFileHeader : {}", record, recordMap, headers, inFileHeader);
+                            recordMap.put("filename", cdrFile.getFilename());
+                            recordMap.put("dataFeed", cdrFile.getDataFeed());
 
-                        recordMap.put("filename", cdrFile.getFilename());
-                        recordMap.put("dataFeed", cdrFile.getDataFeed());
+                            recordMap.put("watchFolder", cdrFile.getWatchFolder());
+                            recordMap.put("backUpFolder", cdrFile.getBackupFolder());
 
-                        recordMap.put("watchFolder", cdrFile.getWatchFolder());
-                        recordMap.put("backUpFolder", cdrFile.getBackupFolder());
+                            validRecords.incrementAndGet();
 
-                        validRecords.incrementAndGet();
+                            // save this to Kafka
+                        synchronized (streamLock) {
+                            try {
+                                kafkaProducer.produceToKafka(recordMap, kafkaTopic, cdrFile.getDataFeed());
+                                long requestTime = System.currentTimeMillis() - startTime;
+                                int sleepTime = EventsLimitingUtil.getSleepTime(eventsPerSecond, Math.toIntExact(requestTime));
+                                logger.info("Sleeping for : {} ms", sleepTime);
 
-                        // save this to Kafka
-                        try {
-                            kafkaProducer.produceToKafka(recordMap, kafkaTopic, cdrFile.getDataFeed());
-                            long requestTime = System.currentTimeMillis() - startTime;
-                            int sleepTime = EventsLimitingUtil.getSleepTime(eventsPerSecond, Math.toIntExact(requestTime));
-
-                            if (sleepTime > 0){
-                                Thread.sleep(sleepTime);
+                                if (sleepTime > 0) {
+                                    Thread.sleep(sleepTime);
+                                }
+                            } catch (Exception e) {
+                                logger.warn("Unable to produce record : {} to kafka", recordMap);
                             }
-                        } catch (Exception e) {
-                            logger.warn("Unable to produce record : {} to kafka", recordMap);
                         }
                     }
                     recordCount.incrementAndGet();
