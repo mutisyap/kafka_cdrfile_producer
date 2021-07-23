@@ -19,3 +19,4 @@ fileReaderConfigurations:
     recordSkipPattern: (?s).*\bData Received\b.*
     kafkaTopic: avaya
     threadSleepTimeMs: 3000
+    eventsPerSecond: 100

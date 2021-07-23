@@ -1,6 +1,7 @@
 package io.pmutisya.config;
 
 public class CDRFileReaderConfiguration {
+
     private String folder;
 
     private String filePattern;
@@ -22,6 +23,8 @@ public class CDRFileReaderConfiguration {
     private String kafkaTopic;
 
     private int threadSleepTimeMs;
+
+    private int eventsPerSecond;
 
     public String getFolder() {
         return folder;
@@ -111,6 +114,14 @@ public class CDRFileReaderConfiguration {
         this.threadSleepTimeMs = threadSleepTimeMs;
     }
 
+    public int getEventsPerSecond() {
+        return eventsPerSecond;
+    }
+
+    public void setEventsPerSecond(int eventsPerSecond) {
+        this.eventsPerSecond = eventsPerSecond;
+    }
+
     @Override
     public String toString() {
         return "CDRFileReaderConfiguration{" +
@@ -124,7 +135,8 @@ public class CDRFileReaderConfiguration {
                 ", recordDelimiter='" + recordDelimiter + '\'' +
                 ", recordSkipPattern='" + recordSkipPattern + '\'' +
                 ", kafkaTopic='" + kafkaTopic + '\'' +
-                ", targetTransactionsPerSecond=" + threadSleepTimeMs +
+                ", threadSleepTimeMs=" + threadSleepTimeMs +
+                ", eventsPerSecond=" + eventsPerSecond +
                 '}';
     }
 }

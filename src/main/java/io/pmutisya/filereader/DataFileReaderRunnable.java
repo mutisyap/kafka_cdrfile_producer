@@ -4,6 +4,7 @@ import com.hazelcast.core.HazelcastInstance;
 import io.pmutisya.config.CDRFileReaderConfiguration;
 import io.pmutisya.config.HazelcastConfiguration;
 import io.pmutisya.domain.CDRFile;
+import io.pmutisya.kafkaproducer.EventsLimitingUtil;
 import io.pmutisya.kafkaproducer.KafkaProducer;
 import io.pmutisya.repository.CDRFileRepository;
 import io.pmutisya.util.FileReaderUtil;
@@ -49,7 +50,7 @@ public class DataFileReaderRunnable implements Runnable {
     private String recordDelimiter;
     private String recordSkipPattern;
     private String[] headers;
-    private int threadSleepTimeMs;
+    private int eventsPerSecond;
 
     public DataFileReaderRunnable(CDRFileReaderConfiguration cdrFileReaderConfiguration, KafkaProducer kafkaProducer) {
         this.kafkaProducer = kafkaProducer;
@@ -72,7 +73,7 @@ public class DataFileReaderRunnable implements Runnable {
         recordDelimiter = cdrFileReaderConfiguration.getRecordDelimiter();
         recordSkipPattern = cdrFileReaderConfiguration.getRecordSkipPattern();
         kafkaTopic = cdrFileReaderConfiguration.getKafkaTopic();
-        threadSleepTimeMs = cdrFileReaderConfiguration.getThreadSleepTimeMs();
+        eventsPerSecond = cdrFileReaderConfiguration.getEventsPerSecond();
 
         String header = cdrFileReaderConfiguration.getHeader();
         if (header != null && !header.isEmpty()) {
@@ -91,6 +92,11 @@ public class DataFileReaderRunnable implements Runnable {
     @Override
     public void run() {
         while (true) {
+            if (Thread.currentThread().isInterrupted()){
+                logger.error("Thread interrupted. Exiting");
+                break;
+            }
+
             try {
                 File file = getFileUsingCommons(folder);
 
@@ -117,16 +123,10 @@ public class DataFileReaderRunnable implements Runnable {
                 } else {
                     logger.debug("No files to read in folder : {}", folder);
                 }
-
-                Thread.sleep(threadSleepTimeMs);
-
-            } catch (InterruptedException e) {
-                logger.error("Thread interrupted. Exiting");
-                break;
             } catch (Exception e) {
                 logger.warn("Encountered exception. Thread proceeding", e);
                 try {
-                    Thread.sleep(threadSleepTimeMs * 2);
+                    Thread.sleep(6000);
                 } catch (InterruptedException ignored) {
                 }
             }
@@ -240,6 +240,8 @@ public class DataFileReaderRunnable implements Runnable {
                 try {
                     logger.debug("Reading line : {}", line);
                     if (isValid(line, recordSkipPattern)) {
+                        long startTime = System.currentTimeMillis();
+
                         lineNumber.incrementAndGet();
 
                         List<String> record = Arrays.asList(line.split(recordDelimiter));
@@ -264,6 +266,12 @@ public class DataFileReaderRunnable implements Runnable {
                         // save this to Kafka
                         try {
                             kafkaProducer.produceToKafka(recordMap, kafkaTopic, cdrFile.getDataFeed());
+                            long requestTime = System.currentTimeMillis() - startTime;
+                            int sleepTime = EventsLimitingUtil.getSleepTime(eventsPerSecond, Math.toIntExact(requestTime));
+
+                            if (sleepTime > 0){
+                                Thread.sleep(sleepTime);
+                            }
                         } catch (Exception e) {
                             logger.warn("Unable to produce record : {} to kafka", recordMap);
                         }
