@@ -16,8 +16,7 @@ import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,7 +28,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -52,7 +50,6 @@ public class DataFileReaderRunnable implements Runnable {
     private String recordSkipPattern;
     private String[] headers;
     private int eventsPerSecond;
-    private final  ReentrantLock streamLock = new ReentrantLock();
 
     public DataFileReaderRunnable(CDRFileReaderConfiguration cdrFileReaderConfiguration, KafkaProducer kafkaProducer) {
         this.kafkaProducer = kafkaProducer;
@@ -232,13 +229,15 @@ public class DataFileReaderRunnable implements Runnable {
         AtomicInteger recordCount = new AtomicInteger(0);
 
         Path filePath = Paths.get(cdrFile.getWatchFolder() + "/" + cdrFile.getFilename());
-        try (Stream<String> lines = Files.lines(filePath, StandardCharsets.ISO_8859_1)) {
+
+        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(filePath.toFile()), StandardCharsets.ISO_8859_1))) {
             AtomicInteger lineNumber = new AtomicInteger(0);
             AtomicInteger validRecords = new AtomicInteger(0);
 
-            AtomicReference<List<String>> inFileHeader = new AtomicReference<>();
+            final AtomicReference<List<String>> inFileHeader = new AtomicReference<>();
 
-            lines.forEach(line -> {
+            String line;
+            while ((line = bufferedReader.readLine()) != null)   {
                 try {
                     logger.debug("Reading line : {}", line);
                     if (isValid(line, recordSkipPattern)) {
@@ -250,34 +249,32 @@ public class DataFileReaderRunnable implements Runnable {
 
                         if (headerLine != null && headerLine.equals(lineNumber.get())) {
                             inFileHeader.set(record);
-                            return;
+                            continue;
                         }
 
-                            Map<String, String> recordMap = recordToMap(record, inFileHeader.get(), headers);
-                            logger.debug("Converted record : {} to map : {} using headers : {} and inFileHeader : {}", record, recordMap, headers, inFileHeader);
+                        Map<String, String> recordMap = recordToMap(record, inFileHeader.get(), headers);
+                        logger.debug("Converted record : {} to map : {} using headers : {} and inFileHeader : {}", record, recordMap, headers, inFileHeader);
 
-                            recordMap.put("filename", cdrFile.getFilename());
-                            recordMap.put("dataFeed", cdrFile.getDataFeed());
+                        recordMap.put("filename", cdrFile.getFilename());
+                        recordMap.put("dataFeed", cdrFile.getDataFeed());
 
-                            recordMap.put("watchFolder", cdrFile.getWatchFolder());
-                            recordMap.put("backUpFolder", cdrFile.getBackupFolder());
+                        recordMap.put("watchFolder", cdrFile.getWatchFolder());
+                        recordMap.put("backUpFolder", cdrFile.getBackupFolder());
 
-                            validRecords.incrementAndGet();
+                        validRecords.incrementAndGet();
 
-                            // save this to Kafka
-                        synchronized (streamLock) {
-                            try {
-                                kafkaProducer.produceToKafka(recordMap, kafkaTopic, cdrFile.getDataFeed());
-                                long requestTime = System.currentTimeMillis() - startTime;
-                                int sleepTime = EventsLimitingUtil.getSleepTime(eventsPerSecond, Math.toIntExact(requestTime));
-                                logger.info("Sleeping for : {} ms", sleepTime);
+                        // save this to Kafka
+                        try {
+                            kafkaProducer.produceToKafka(recordMap, kafkaTopic, cdrFile.getDataFeed());
+                            long requestTime = System.currentTimeMillis() - startTime;
+                            int sleepTime = EventsLimitingUtil.getSleepTime(eventsPerSecond, Math.toIntExact(requestTime));
+                            logger.info("Sleeping for : {} ms", sleepTime);
 
-                                if (sleepTime > 0) {
-                                    Thread.sleep(sleepTime);
-                                }
-                            } catch (Exception e) {
-                                logger.warn("Unable to produce record : {} to kafka", recordMap);
+                            if (sleepTime > 0){
+                                Thread.sleep(sleepTime);
                             }
+                        } catch (Exception e) {
+                            logger.warn("Unable to produce record : {} to kafka", recordMap);
                         }
                     }
                     recordCount.incrementAndGet();
@@ -289,7 +286,7 @@ public class DataFileReaderRunnable implements Runnable {
                 } catch (Exception ex) {
                     logger.warn("Encountered exception", ex);
                 }
-            });
+            }
         }
 
         Path backUpPath = Paths.get(cdrFile.getWatchFolder() + "/produced");
