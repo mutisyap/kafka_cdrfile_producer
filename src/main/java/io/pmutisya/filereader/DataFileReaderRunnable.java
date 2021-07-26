@@ -97,10 +97,11 @@ public class DataFileReaderRunnable implements Runnable {
             }
 
             try {
+                long startTimeMillis = System.currentTimeMillis();
                 File file = getFileUsingCommons(folder);
 
                 if (file != null) {
-                    logger.info("Retrieved file : {}", file);
+                    logger.info("BEGIN:Retrieved file : {}", file);
 
 
                     CDRFile cdrFile = createCDRObjectFromFile(file);
@@ -119,6 +120,13 @@ public class DataFileReaderRunnable implements Runnable {
 
                     kafkaProducer.produceToKafka(cdrFile, "cdr-files", dataKey);
                     logger.debug("Produced record to Kafka with key : {}", dataKey);
+
+                    long timeTakenMs = System.currentTimeMillis() - startTimeMillis;
+
+                    double recordsPerSecond = (records * 1000.0) / timeTakenMs;
+
+
+                    logger.info("END|Read file : {} with records : {} in {} ms. Current TPS = {}, Expected TPS : {}", file, records, timeTakenMs, recordsPerSecond, eventsPerSecond);
                 } else {
                     logger.debug("No files to read in folder : {}", folder);
                 }
