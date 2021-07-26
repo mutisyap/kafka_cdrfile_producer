@@ -101,7 +101,7 @@ public class DataFileReaderRunnable implements Runnable {
                 File file = getFileUsingCommons(folder);
 
                 if (file != null) {
-                    logger.info("BEGIN:Retrieved file : {}", file);
+                    logger.info("BEGIN|Feed: {} |Retrieved file. Name : {}", dataKey,file.getName());
 
 
                     CDRFile cdrFile = createCDRObjectFromFile(file);
@@ -126,7 +126,7 @@ public class DataFileReaderRunnable implements Runnable {
                     double recordsPerSecond = (records * 1000.0) / timeTakenMs;
 
 
-                    logger.info("END|Read file : {} with records : {} in {} ms. Current TPS = {}, Expected TPS : {}", file, records, timeTakenMs, recordsPerSecond, eventsPerSecond);
+                    logger.info("END|Read file : {} with records : {} in {} ms. Current TPS = {}, Expected TPS : {}", file.getName(), records, timeTakenMs, recordsPerSecond, eventsPerSecond);
                 } else {
                     logger.debug("No files to read in folder : {}", folder);
                 }
