@@ -123,7 +123,7 @@ public class DataFileReaderRunnable implements Runnable {
 
                     long timeTakenMs = System.currentTimeMillis() - startTimeMillis;
 
-                    double recordsPerSecond = (records * 1000.0) / timeTakenMs;
+                    long recordsPerSecond = Math.round((records * 1000.0) / timeTakenMs);
 
 
                     logger.info("END|Read file : {} with records : {} in {} ms. Current TPS = {}, Expected TPS : {}", file.getName(), records, timeTakenMs, recordsPerSecond, eventsPerSecond);
