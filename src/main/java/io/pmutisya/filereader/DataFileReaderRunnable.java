@@ -105,7 +105,7 @@ public class DataFileReaderRunnable implements Runnable {
 
                     CDRFile cdrFile = createCDRObjectFromFile(file);
 
-                    logger.info("Created CDR Object : {}", cdrFile);
+                    logger.debug("Created CDR Object : {}", cdrFile);
 
                     int records = readFile(cdrFile);
 
@@ -268,7 +268,7 @@ public class DataFileReaderRunnable implements Runnable {
                             kafkaProducer.produceToKafka(recordMap, kafkaTopic, cdrFile.getDataFeed());
                             long requestTime = System.currentTimeMillis() - startTime;
                             int sleepTime = EventsLimitingUtil.getSleepTime(eventsPerSecond, Math.toIntExact(requestTime));
-                            logger.info("Sleeping for : {} ms", sleepTime);
+                            logger.debug("Sleeping for : {} ms", sleepTime);
 
                             if (sleepTime > 0){
                                 Thread.sleep(sleepTime);
