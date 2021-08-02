@@ -8,13 +8,9 @@ public class MulikaInstanceConfiguration {
     private static MulikaClientFactory instance;
 
     public static void setUpMulikaClientInstance(String url, String apiKey, long reportStatsIntervalMs, String applicationName, String moduleName) {
-        if (instance == null) {
+        MulikaConfiguration mulikaConfiguration = new MulikaConfiguration(url, apiKey, reportStatsIntervalMs, applicationName, moduleName);
 
-
-            MulikaConfiguration mulikaConfiguration = new MulikaConfiguration(url, apiKey, reportStatsIntervalMs, applicationName, moduleName);
-
-            instance = MulikaClientFactory.getInstance(mulikaConfiguration, true);
-        }
+        instance = MulikaClientFactory.getInstance(mulikaConfiguration, true);
     }
 
     public static MulikaClientFactory getInstance() throws Exception {

@@ -93,7 +93,7 @@ public class DataFileReaderRunnable implements Runnable {
     @Override
     public void run() {
         while (true) {
-            if (Thread.currentThread().isInterrupted()){
+            if (Thread.currentThread().isInterrupted()) {
                 logger.error("Thread interrupted. Exiting");
                 break;
             }
@@ -103,33 +103,38 @@ public class DataFileReaderRunnable implements Runnable {
                 File file = getFileUsingCommons(folder);
 
                 if (file != null) {
-                    logger.info("BEGIN|Feed: {} |Retrieved file. Name : {}", dataKey,file.getName());
+                    try {
+                        logger.info("BEGIN|Feed: {} |Retrieved file. Name : {}", dataKey, file.getName());
 
 
-                    CDRFile cdrFile = createCDRObjectFromFile(file);
+                        CDRFile cdrFile = createCDRObjectFromFile(file);
 
-                    logger.debug("Created CDR Object : {}", cdrFile);
+                        logger.debug("Created CDR Object : {}", cdrFile);
 
-                    int records = readFile(cdrFile);
+                        int records = readFile(cdrFile);
 
-                    logger.debug("Read records : {}", records);
+                        logger.debug("Read records : {}", records);
 
-                    // save cdr file to cache for 48 hours
-                    // cdrFileRepository.save(cdrFile);
-                    String mapKey = cdrFile.getDataFeed() + "_" + cdrFile.getFilename();
-                    hazelcastInstance.getMap(hazelCastMapName).set(mapKey, cdrFile, hazelCastTimeToLiveInHours, TimeUnit.HOURS);
-                    logger.debug("Cached file to hazelcast with key : {}", mapKey);
+                        // save cdr file to cache for 48 hours
+                        // cdrFileRepository.save(cdrFile);
+                        String mapKey = cdrFile.getDataFeed() + "_" + cdrFile.getFilename();
+                        hazelcastInstance.getMap(hazelCastMapName).set(mapKey, cdrFile, hazelCastTimeToLiveInHours, TimeUnit.HOURS);
+                        logger.debug("Cached file to hazelcast with key : {}", mapKey);
 
-                    kafkaProducer.produceToKafka(cdrFile, "cdr-files", dataKey);
-                    logger.debug("Produced record to Kafka with key : {}", dataKey);
+                        kafkaProducer.produceToKafka(cdrFile, "cdr-files", dataKey);
+                        logger.debug("Produced record to Kafka with key : {}", dataKey);
 
-                    long timeTakenMs = System.currentTimeMillis() - startTimeMillis;
+                        long timeTakenMs = System.currentTimeMillis() - startTimeMillis;
 
-                    long recordsPerSecond = Math.round((records * 1000.0) / timeTakenMs);
+                        long recordsPerSecond = Math.round((records * 1000.0) / timeTakenMs);
 
-                    reportStatsToMulika(startTimeMillis, "files", true);
+                        reportStatsToMulika(startTimeMillis, "files", true);
 
-                    logger.info("END|Read file : {} with records : {} in {} ms. Current TPS = {}, Expected TPS : {}", file.getName(), records, timeTakenMs, recordsPerSecond, eventsPerSecond);
+                        logger.info("END|Read file : {} with records : {} in {} ms. Current TPS = {}, Expected TPS : {}", file.getName(), records, timeTakenMs, recordsPerSecond, eventsPerSecond);
+                    } catch (Exception ex) {
+                        reportStatsToMulika(startTimeMillis, "files", false);
+                        throw ex;
+                    }
                 } else {
                     logger.debug("No files to read in folder : {}", folder);
                 }
@@ -248,7 +253,7 @@ public class DataFileReaderRunnable implements Runnable {
             final AtomicReference<List<String>> inFileHeader = new AtomicReference<>();
 
             String line;
-            while ((line = bufferedReader.readLine()) != null)   {
+            while ((line = bufferedReader.readLine()) != null) {
                 try {
                     logger.debug("Reading line : {}", line);
                     if (isValid(line, recordSkipPattern)) {
@@ -281,7 +286,7 @@ public class DataFileReaderRunnable implements Runnable {
                             int sleepTime = EventsLimitingUtil.getSleepTime(eventsPerSecond, Math.toIntExact(requestTime));
                             logger.debug("Sleeping for : {} ms", sleepTime);
 
-                            if (sleepTime > 0){
+                            if (sleepTime > 0) {
                                 Thread.sleep(sleepTime);
                             }
                             reportStatsToMulika(startTime, "records", true);
@@ -298,13 +303,7 @@ public class DataFileReaderRunnable implements Runnable {
                     cdrFile.setInvalidRecords(recordCount.get() - validRecords.get());
                 } catch (Exception ex) {
                     logger.warn("Encountered exception", ex);
-
-                    try {
-                        reportStatsToMulika(startTime, "records", false);
-                    } catch (Exception e) {
-                        logger.warn("Unable to reach Mulika");
-                    }
-
+                    reportStatsToMulika(startTime, "records", false);
                 }
             }
         }
@@ -356,12 +355,16 @@ public class DataFileReaderRunnable implements Runnable {
         return dataKey;
     }
 
-    private void reportStatsToMulika(long startTime, String resource, boolean successful) throws Exception {
+    private void reportStatsToMulika(long startTime, String resource, boolean successful) {
         long mulikaStartTime = System.currentTimeMillis();
         logger.info("About to report stats to Mulika. Start Time : {}, resource : {}, successful : {}", startTime, resource, successful);
         long timeTakenMs = System.currentTimeMillis() - startTime;
-        String serviceName = dataKey+"_"+resource;
-        MulikaInstanceConfiguration.getInstance().getMulikaStatisticsManager().reportStatistics(serviceName, ServiceType.SERVICE, successful, Math.toIntExact(timeTakenMs));
-        logger.info("Successfully reported stats to Mulika. Start Time : {}, resource : {}, successful : {}. Took : {} ms", startTime, resource, successful, (System.currentTimeMillis() - mulikaStartTime));
+        String serviceName = dataKey + "_" + resource;
+        try {
+            MulikaInstanceConfiguration.getInstance().getMulikaStatisticsManager().reportStatistics(serviceName, ServiceType.SERVICE, successful, Math.toIntExact(timeTakenMs));
+            logger.info("Successfully reported stats to Mulika. Start Time : {}, resource : {}, successful : {}. Took : {} ms", startTime, resource, successful, (System.currentTimeMillis() - mulikaStartTime));
+        } catch (Exception e) {
+            logger.error("Error reporting stats to Mulika. Start Time : {}, resource : {}, successful : {}. Took : {} ms", startTime, resource, successful, (System.currentTimeMillis() - mulikaStartTime), e);
+        }
     }
 }
