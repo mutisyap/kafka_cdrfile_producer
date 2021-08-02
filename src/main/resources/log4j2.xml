@@ -13,7 +13,7 @@
             <AppenderRef ref="FileAppender"/>
         </Root>
         <Logger name="ke.co.meliora" level="INFO">
-            <AppenderRef ref="FileAppender"/>
+            <AppenderRef ref="ConsoleAppender"/>
         </Logger>
     </Loggers>
 </Configuration>
