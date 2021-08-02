@@ -4,6 +4,7 @@ import io.pmutisya.config.ApplicationConfiguration;
 import io.pmutisya.config.ConfigurationUtil;
 import io.pmutisya.config.HazelcastConfiguration;
 import io.pmutisya.factory.KafkaCDRFileFactory;
+import io.pmutisya.mulika.MulikaInstanceConfiguration;
 import io.pmutisya.repository.CDRFileRepository;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,9 +17,9 @@ import java.io.IOException;
 public class
 App {
     private static final Logger logger = LogManager.getLogger(App.class);
+    private static final CDRFileRepository cdrFileRepository = new CDRFileRepository();
     private static KafkaCDRFileFactory kafkaCDRFileFactory;
     private static Thread mainThread;
-    private static final CDRFileRepository cdrFileRepository = new CDRFileRepository();
 
     public static void main(String[] args) throws IOException, InterruptedException {
         ApplicationConfiguration applicationConfiguration = ConfigurationUtil.readConfigurations();
@@ -36,6 +37,9 @@ App {
         kafkaCDRFileFactory.startThreads();
         logger.info("Successfully started cdr reader threads");
 
+        setUpMulikaClient(applicationConfiguration);
+        logger.info("Successfully set up Mulika Client");
+
         logger.info("Successfully started Application");
 
         //add shutdown hook
@@ -43,6 +47,15 @@ App {
         mainThread = Thread.currentThread();
 
         checkApplicationHealth();
+    }
+
+    private static void setUpMulikaClient(ApplicationConfiguration applicationConfiguration) {
+        MulikaInstanceConfiguration.setUpMulikaClientInstance(
+                applicationConfiguration.getMulikaURL(),
+                applicationConfiguration.getMulikaApiKey(),
+                applicationConfiguration.getReportStatsIntervalMs(),
+                applicationConfiguration.getApplicationName(),
+                applicationConfiguration.getModuleName());
     }
 
     private static void checkApplicationHealth() {

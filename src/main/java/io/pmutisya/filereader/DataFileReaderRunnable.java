@@ -6,8 +6,10 @@ import io.pmutisya.config.HazelcastConfiguration;
 import io.pmutisya.domain.CDRFile;
 import io.pmutisya.kafkaproducer.EventsLimitingUtil;
 import io.pmutisya.kafkaproducer.KafkaProducer;
+import io.pmutisya.mulika.MulikaInstanceConfiguration;
 import io.pmutisya.repository.CDRFileRepository;
 import io.pmutisya.util.FileReaderUtil;
+import ke.co.meliora.statistics.enumeration.ServiceType;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.comparator.LastModifiedFileComparator;
 import org.apache.commons.io.filefilter.FileFilterUtils;
@@ -125,6 +127,7 @@ public class DataFileReaderRunnable implements Runnable {
 
                     long recordsPerSecond = Math.round((records * 1000.0) / timeTakenMs);
 
+                    reportStatsToMulika(startTimeMillis, "files", true);
 
                     logger.info("END|Read file : {} with records : {} in {} ms. Current TPS = {}, Expected TPS : {}", file.getName(), records, timeTakenMs, recordsPerSecond, eventsPerSecond);
                 } else {
@@ -281,8 +284,10 @@ public class DataFileReaderRunnable implements Runnable {
                             if (sleepTime > 0){
                                 Thread.sleep(sleepTime);
                             }
+                            reportStatsToMulika(startTime, "records", true);
                         } catch (Exception e) {
                             logger.warn("Unable to produce record : {} to kafka", recordMap);
+                            reportStatsToMulika(startTime, "records", true);
                         }
                     }
                     recordCount.incrementAndGet();
@@ -293,6 +298,13 @@ public class DataFileReaderRunnable implements Runnable {
                     cdrFile.setInvalidRecords(recordCount.get() - validRecords.get());
                 } catch (Exception ex) {
                     logger.warn("Encountered exception", ex);
+
+                    try {
+                        reportStatsToMulika(startTime, "records", false);
+                    } catch (Exception e) {
+                        logger.warn("Unable to reach Mulika");
+                    }
+
                 }
             }
         }
@@ -342,5 +354,11 @@ public class DataFileReaderRunnable implements Runnable {
 
     public String getDataKey() {
         return dataKey;
+    }
+
+    private void reportStatsToMulika(long startTime, String resource, boolean successful) throws Exception {
+        long timeTakenMs = System.currentTimeMillis() - startTime;
+        String serviceName = dataKey+"_"+resource;
+        MulikaInstanceConfiguration.getInstance().getMulikaStatisticsManager().reportStatistics(serviceName, ServiceType.SERVICE, successful, Math.toIntExact(timeTakenMs));
     }
 }

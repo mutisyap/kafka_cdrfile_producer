@@ -1,3 +1,8 @@
+applicationName: cx
+moduleName: kcp
+mulikaURL: http://10.22.24.131:19645
+mulikaApiKey: testKey
+reportStatsIntervalMs: 60000
 kafkaProperties:
   bootstrap.servers: 127.0.0.1:9092
   acks: all

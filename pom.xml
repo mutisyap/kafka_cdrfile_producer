@@ -103,5 +103,25 @@
             <artifactId>snakeyaml</artifactId>
             <version>1.29</version>
         </dependency>
+
+        <dependency>
+            <groupId>ke.co.meliora</groupId>
+            <artifactId>mulika-clients</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>snapshots</id>
+            <name>Archiva Managed Snapshot Repository</name>
+            <url>http://51.15.53.16:6767/repository/snapshots/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 </project>
