@@ -357,8 +357,11 @@ public class DataFileReaderRunnable implements Runnable {
     }
 
     private void reportStatsToMulika(long startTime, String resource, boolean successful) throws Exception {
+        long mulikaStartTime = System.currentTimeMillis();
+        logger.info("About to report stats to Mulika. Start Time : {}, resource : {}, successful : {}", startTime, resource, successful);
         long timeTakenMs = System.currentTimeMillis() - startTime;
         String serviceName = dataKey+"_"+resource;
         MulikaInstanceConfiguration.getInstance().getMulikaStatisticsManager().reportStatistics(serviceName, ServiceType.SERVICE, successful, Math.toIntExact(timeTakenMs));
+        logger.info("Successfully reported stats to Mulika. Start Time : {}, resource : {}, successful : {}. Took : {} ms", startTime, resource, successful, (System.currentTimeMillis() - mulikaStartTime));
     }
 }
